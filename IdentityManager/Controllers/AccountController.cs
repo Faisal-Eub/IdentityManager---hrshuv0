@@ -58,4 +58,11 @@ public class AccountController : Controller
         foreach(var error in result.Errors)
             ModelState.AddModelError(string.Empty, error.Description);
     }
+
+    public async Task<IActionResult> LogOff()
+    {
+        await _signInManager.SignOutAsync();
+
+        return RedirectToAction(nameof(Index), "Home");
+    }
 }
