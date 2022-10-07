@@ -18,6 +18,7 @@ public class AccountController : Controller
 
 
     // GET
+    [HttpGet]
     public IActionResult Register()
     {
         RegisterVm registerVm = new RegisterVm();
@@ -52,6 +53,21 @@ public class AccountController : Controller
         return View(model);
     }
 
+    // GET
+    [HttpGet]
+    public IActionResult Login()
+    {
+        return View();
+    }
+    
+    // POST
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Login(LoginVm model)
+    {
+        
+        return View(model);
+    }
 
     private void AddErrors(IdentityResult result)
     {
