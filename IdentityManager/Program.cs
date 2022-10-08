@@ -13,7 +13,14 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString);
 });
 
-builder.Services.AddIdentity<IdentityUser, IdentityRole>()
+builder.Services.AddIdentity<IdentityUser, IdentityRole>(options =>
+    {
+        options.Password.RequireDigit = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequiredLength = 3;
+    })
     .AddEntityFrameworkStores<ApplicationDbContext>();
 
 var app = builder.Build();

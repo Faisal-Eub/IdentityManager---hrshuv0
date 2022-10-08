@@ -65,7 +65,16 @@ public class AccountController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginVm model)
     {
-        
+        if (!ModelState.IsValid) return View(model);
+
+        var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password,
+            isPersistent: model.RememberMe, lockoutOnFailure: false);
+        if (result.Succeeded)
+        {
+            return RedirectToAction(nameof(Index), "Home");
+        }
+        ModelState.AddModelError(string.Empty, "Invalid login attempt");
+
         return View(model);
     }
 
