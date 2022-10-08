@@ -19,8 +19,10 @@ public class AccountController : Controller
 
     // GET
     [HttpGet]
-    public IActionResult Register()
+    public IActionResult Register(string? returnUrl=null)
     {
+        ViewData["ReturnUrl"] = returnUrl;
+        
         RegisterVm registerVm = new RegisterVm();
         
         return View(registerVm);
@@ -29,8 +31,11 @@ public class AccountController : Controller
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterVm model)
+    public async Task<IActionResult> Register(RegisterVm model, string? returnUrl=null)
     {
+        ViewData["ReturnUrl"] = returnUrl;
+        returnUrl ??= Url.Content("~/");
+        
         if (!ModelState.IsValid) return View(model);
 
         var user = new ApplicationUser()
@@ -45,7 +50,7 @@ public class AccountController : Controller
         {
             await _signInManager.SignInAsync(user, isPersistent:false);
 
-            return RedirectToAction(nameof(Index), "Home");
+            return LocalRedirect(returnUrl);
         }
         
         AddErrors(result);
@@ -55,23 +60,28 @@ public class AccountController : Controller
 
     // GET
     [HttpGet]
-    public IActionResult Login()
+    public IActionResult Login(string? returnUrl=null)
     {
+        ViewData["ReturnUrl"] = returnUrl;
+        
         return View();
     }
     
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginVm model)
+    public async Task<IActionResult> Login(LoginVm model, string? returnUrl=null)
     {
+        ViewData["ReturnUrl"] = returnUrl;
+        returnUrl ??= Url.Content("~/");
+        
         if (!ModelState.IsValid) return View(model);
 
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password,
             isPersistent: model.RememberMe, lockoutOnFailure: false);
         if (result.Succeeded)
         {
-            return RedirectToAction(nameof(Index), "Home");
+            return LocalRedirect(returnUrl);
         }
         ModelState.AddModelError(string.Empty, "Invalid login attempt");
 

@@ -9,7 +9,7 @@
 
 <div class="row w-75">
     <div class="col-md-8">
-        <form asp-controller="Account" asp-action="Login" method="post" role="form">
+        <form asp-controller="Account" asp-action="Login" asp-route-returnUrl="@ViewData["ReturnUrl"]" method="post" role="form">
             <h4>Use local account to login</h4>
             <hr/>
 
