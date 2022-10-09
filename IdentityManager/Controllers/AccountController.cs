@@ -145,7 +145,38 @@ public class AccountController : Controller
     }
 
     // GET
-    public IActionResult ResetPassword(string userid, string code)
+    public IActionResult ResetPassword(string? code=null)
+    {
+        return code == null ? View("Error") : View("ResetPassword");
+    }
+    
+    // POST
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ResetPassword(ResetPasswordVm model)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        var user = await _userManager.FindByEmailAsync(model.Email);
+        if (user is null)
+        {
+            return RedirectToAction("ResetPasswordConfirmation");
+        }
+
+        var result = await _userManager.ResetPasswordAsync(user, model.Code, model.Password);
+
+        if (result.Succeeded)
+        {
+            return RedirectToAction("ResetPasswordConfirmation");
+        }
+        AddErrors(result);
+        
+        return View();
+    }
+    
+    // GET
+    [HttpGet]
+    public IActionResult ResetPasswordConfirmation()
     {
         return View();
     }
