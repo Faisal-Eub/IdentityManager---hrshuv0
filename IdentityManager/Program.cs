@@ -33,6 +33,14 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Lockout.MaxFailedAccessAttempts = 2;
 });
 
+var facebookOptions = builder.Configuration.GetSection("Facebook").Get<FacebookOptions>();
+builder.Services.AddAuthentication()
+    .AddFacebook(options =>
+    {
+        options.AppId = facebookOptions.AppId;
+        options.AppSecret = facebookOptions.AppSecret;
+    });
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

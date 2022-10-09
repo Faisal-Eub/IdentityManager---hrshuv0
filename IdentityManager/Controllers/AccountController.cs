@@ -1,4 +1,5 @@
-﻿using IdentityManager.Models;
+﻿using System.Security.Claims;
+using IdentityManager.Models;
 using IdentityManager.Models.ViewModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
@@ -206,5 +207,96 @@ public class AccountController : Controller
 
         return result.Succeeded ? View("ConfirmEmail") : View("Error");
         return View(result.Succeeded ? "ConfirmEmail" : "Error");
+    }
+
+    // POST
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public IActionResult ExternalLogin(string provider, string? returnUrl=null)
+    {
+        var redirectUrl = Url.Action("ExternalLoginCallback", "Account", new { ReturnUrl = returnUrl });
+        var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
+
+        return Challenge(properties, provider);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ExternalLoginCallback(string? returnUrl, string? remoteError=null)
+    {
+        returnUrl ??= Url.Content("~/");
+        
+        if (remoteError is not null)
+        {
+            ModelState.AddModelError(string.Empty, $"Error from external provider: {remoteError}");
+            return View(nameof(Login));
+        }
+
+        var info = await _signInManager.GetExternalLoginInfoAsync();
+        if (info is null)
+        {
+            return RedirectToAction(nameof(Login));
+        }
+        
+        // Sign in the user with this external login provider, if the user already has a login
+        var result = await _signInManager.ExternalLoginSignInAsync(info.LoginProvider, info.ProviderKey, isPersistent:false);
+        if (result.Succeeded)
+        {
+            //update any authentication token
+            await _signInManager.UpdateExternalAuthenticationTokensAsync(info);
+            return LocalRedirect(returnUrl);
+        }
+        else
+        {
+            ViewData["ReturnUrl"] = returnUrl;
+            ViewData["ProviderDisplayName"] = info.ProviderDisplayName;
+            var email = info.Principal.FindFirstValue(ClaimTypes.Email);
+            var name = info.Principal.FindFirstValue(ClaimTypes.Name);
+            return View("ExternalLoginConfirmation", new ExternalLoginConfirmationVm{Email = email, Name = name});
+        }
+    }
+
+    // POST
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ExternalLoginConfirmation(ExternalLoginConfirmationVm model, string? returnUrl=null)
+    {
+        returnUrl ??= Url.Content("~/");
+        
+        if (ModelState.IsValid)
+        {
+            var info = await _signInManager.GetExternalLoginInfoAsync();
+            if (info is null)
+            {
+                return View("Error");
+            }
+
+            var user = new ApplicationUser()
+            {
+                UserName = model.Email,
+                Email = model.Email,
+                Name = model.Name
+            };
+
+            var result = await _userManager.CreateAsync(user);
+
+            if (result.Succeeded)
+            {
+                result = await _userManager.AddLoginAsync(user, info);
+
+                if (result.Succeeded)
+                {
+                    await _signInManager.SignInAsync(user, isPersistent: false);
+                    await _signInManager.UpdateExternalAuthenticationTokensAsync(info);
+
+                    return LocalRedirect(returnUrl);
+                }
+            }
+            
+            AddErrors(result);
+        }
+        
+        ViewData["ReturnUrl"] = returnUrl;
+        
+        return View(model);
     }
 }
