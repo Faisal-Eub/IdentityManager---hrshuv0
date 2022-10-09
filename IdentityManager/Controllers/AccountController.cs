@@ -12,7 +12,8 @@ public class AccountController : Controller
     private readonly SignInManager<IdentityUser> _signInManager;
     private readonly IEmailSender _emailSender;
 
-    public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager, IEmailSender emailSender)
+    public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager,
+        IEmailSender emailSender)
     {
         _userManager = userManager;
         _signInManager = signInManager;
@@ -22,23 +23,23 @@ public class AccountController : Controller
 
     // GET
     [HttpGet]
-    public IActionResult Register(string? returnUrl=null)
+    public IActionResult Register(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
-        
+
         RegisterVm registerVm = new RegisterVm();
-        
+
         return View(registerVm);
     }
-    
+
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Register(RegisterVm model, string? returnUrl=null)
+    public async Task<IActionResult> Register(RegisterVm model, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
         returnUrl ??= Url.Content("~/");
-        
+
         if (!ModelState.IsValid) return View(model);
 
         var user = new ApplicationUser()
@@ -51,33 +52,40 @@ public class AccountController : Controller
         var result = await _userManager.CreateAsync(user, model.Password);
         if (result.Succeeded)
         {
-            await _signInManager.SignInAsync(user, isPersistent:false);
+            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            var callBackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code },
+                protocol: HttpContext.Request.Scheme);
+            var htmlMessage = "Please confirm your account by clicking here <a href=\"" + callBackUrl + "\">link</a>";
+
+            await _emailSender.SendEmailAsync(model.Email, "Confirm Email", htmlMessage);
+
+            await _signInManager.SignInAsync(user, isPersistent: false);
 
             return LocalRedirect(returnUrl);
         }
-        
+
         AddErrors(result);
-        
+
         return View(model);
     }
 
     // GET
     [HttpGet]
-    public IActionResult Login(string? returnUrl=null)
+    public IActionResult Login(string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
-        
+
         return View();
     }
-    
+
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Login(LoginVm model, string? returnUrl=null)
+    public async Task<IActionResult> Login(LoginVm model, string? returnUrl = null)
     {
         ViewData["ReturnUrl"] = returnUrl;
         returnUrl ??= Url.Content("~/");
-        
+
         if (!ModelState.IsValid) return View(model);
 
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password,
@@ -89,7 +97,7 @@ public class AccountController : Controller
 
         if (result.IsLockedOut)
             return View("Lockout");
-        
+
         ModelState.AddModelError(string.Empty, "Invalid login attempt");
 
         return View(model);
@@ -97,7 +105,7 @@ public class AccountController : Controller
 
     private void AddErrors(IdentityResult result)
     {
-        foreach(var error in result.Errors)
+        foreach (var error in result.Errors)
             ModelState.AddModelError(string.Empty, error.Description);
     }
 
@@ -107,14 +115,14 @@ public class AccountController : Controller
 
         return RedirectToAction(nameof(Index), "Home");
     }
-    
+
     // GET
     [HttpGet]
     public IActionResult ForgotPassword()
     {
         return View();
     }
-    
+
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -129,14 +137,15 @@ public class AccountController : Controller
         }
 
         var code = await _userManager.GeneratePasswordResetTokenAsync(user);
-        var callBackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: HttpContext.Request.Scheme);
+        var callBackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code },
+            protocol: HttpContext.Request.Scheme);
         var htmlMessage = "Please reset your password by clicking here <a href=\"" + callBackUrl + "\">link</a>";
-        
+
         await _emailSender.SendEmailAsync(model.Email, "Reset Password", htmlMessage);
 
         return RedirectToAction("ForgotPasswordConfirmation");
     }
-    
+
     // GET
     [HttpGet]
     public IActionResult ForgotPasswordConfirmation()
@@ -145,11 +154,11 @@ public class AccountController : Controller
     }
 
     // GET
-    public IActionResult ResetPassword(string? code=null)
+    public IActionResult ResetPassword(string? code = null)
     {
         return code == null ? View("Error") : View("ResetPassword");
     }
-    
+
     // POST
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -169,15 +178,33 @@ public class AccountController : Controller
         {
             return RedirectToAction("ResetPasswordConfirmation");
         }
+
         AddErrors(result);
-        
+
         return View();
     }
-    
+
     // GET
     [HttpGet]
     public IActionResult ResetPasswordConfirmation()
     {
         return View();
+    }
+
+    public async Task<IActionResult> ConfirmEmail(string? userid, string? code)
+    {
+        if (userid is null || code is null)
+        {
+            return View("Error");
+        }
+
+        var user = await _userManager.FindByIdAsync(userId: userid);
+        if (user is null)
+            return View("Error");
+
+        var result = await _userManager.ConfirmEmailAsync(user, code);
+
+        return result.Succeeded ? View("ConfirmEmail") : View("Error");
+        return View(result.Succeeded ? "ConfirmEmail" : "Error");
     }
 }
