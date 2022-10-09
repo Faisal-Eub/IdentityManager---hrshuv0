@@ -78,11 +78,15 @@ public class AccountController : Controller
         if (!ModelState.IsValid) return View(model);
 
         var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password,
-            isPersistent: model.RememberMe, lockoutOnFailure: false);
+            isPersistent: model.RememberMe, lockoutOnFailure: true);
         if (result.Succeeded)
         {
             return LocalRedirect(returnUrl);
         }
+
+        if (result.IsLockedOut)
+            return View("Lockout");
+        
         ModelState.AddModelError(string.Empty, "Invalid login attempt");
 
         return View(model);
