@@ -104,4 +104,30 @@ public class AccountController : Controller
 
         return RedirectToAction(nameof(Index), "Home");
     }
+    
+    // GET
+    [HttpGet]
+    public IActionResult ForgotPassword()
+    {
+        return View();
+    }
+    
+    // POST
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ForgotPassword(ForgotPasswordVm model)
+    {
+        if (!ModelState.IsValid) return View(model);
+
+        
+        return View(model);
+    }
+    
+    // GET
+    [HttpGet]
+    public IActionResult ForgotPasswordConfirmation()
+    {
+        return View();
+    }
+
 }
