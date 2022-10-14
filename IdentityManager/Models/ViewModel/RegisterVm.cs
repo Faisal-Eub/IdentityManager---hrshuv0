@@ -1,4 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.ModelBinding.Validation;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace IdentityManager.Models.ViewModel;
 
@@ -19,5 +21,8 @@ public class RegisterVm
     public string ConfirmPassword { get; set; }
 
     public string? Name { get; set; }
+
+    public IEnumerable<SelectListItem>? RoleList { get; set; }
+    public string? RoleSelected { get; set; }
     
 }

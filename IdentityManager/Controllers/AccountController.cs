@@ -4,31 +4,58 @@ using IdentityManager.Models.ViewModel;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace IdentityManager.Controllers;
 
 public class AccountController : Controller
 {
     private readonly UserManager<IdentityUser> _userManager;
+    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly SignInManager<IdentityUser> _signInManager;
     private readonly IEmailSender _emailSender;
 
     public AccountController(UserManager<IdentityUser> userManager, SignInManager<IdentityUser> signInManager,
-        IEmailSender emailSender)
+        IEmailSender emailSender, RoleManager<IdentityRole> roleManager)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _emailSender = emailSender;
+        _roleManager = roleManager;
     }
 
 
     // GET
     [HttpGet]
-    public IActionResult Register(string? returnUrl = null)
+    public async Task<IActionResult> Register(string? returnUrl = null)
     {
+        if (!await _roleManager.RoleExistsAsync("Admin"))
+        {
+            await _roleManager.CreateAsync(new IdentityRole("Admin"));
+            await _roleManager.CreateAsync(new IdentityRole("User"));
+        }
+
+        List<SelectListItem> listItems = new List<SelectListItem>()
+        {
+            new ()
+            {
+                Value = "Admin",
+                Text = "Admin"
+            },
+            new()
+            {
+                Value = "User",
+                Text = "User"
+            }
+        };
+        
+
         ViewData["ReturnUrl"] = returnUrl;
 
-        RegisterVm registerVm = new RegisterVm();
+        RegisterVm registerVm = new RegisterVm()
+        {
+            RoleList = listItems
+        };
 
         return View(registerVm);
     }
@@ -40,8 +67,26 @@ public class AccountController : Controller
     {
         ViewData["ReturnUrl"] = returnUrl;
         returnUrl ??= Url.Content("~/");
+        
+        List<SelectListItem> listItems = new List<SelectListItem>()
+        {
+            new ()
+            {
+                Value = "Admin",
+                Text = "Admin"
+            },
+            new()
+            {
+                Value = "User",
+                Text = "User"
+            }
+        };
 
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+        {
+            model.RoleList = listItems;
+            return View(model);
+        }
 
         var user = new ApplicationUser()
         {
@@ -53,13 +98,21 @@ public class AccountController : Controller
         var result = await _userManager.CreateAsync(user, model.Password);
         if (result.Succeeded)
         {
+            if (model.RoleSelected is { Length: > 0 } and "Admin")
+            {
+                await _userManager.AddToRoleAsync(user, "Admin");
+            }
+            else
+            {
+                await _userManager.AddToRoleAsync(user, "User");
+            }
+            
             var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             var callBackUrl = Url.Action("ConfirmEmail", "Account", new { userId = user.Id, code = code },
                 protocol: HttpContext.Request.Scheme);
             var htmlMessage = "Please confirm your account by clicking here <a href=\"" + callBackUrl + "\">link</a>";
 
             await _emailSender.SendEmailAsync(model.Email, "Confirm Email", htmlMessage);
-
             await _signInManager.SignInAsync(user, isPersistent: false);
 
             return LocalRedirect(returnUrl);
@@ -281,6 +334,7 @@ public class AccountController : Controller
 
             if (result.Succeeded)
             {
+                await _userManager.AddToRoleAsync(user, "User");
                 result = await _userManager.AddLoginAsync(user, info);
 
                 if (result.Succeeded)

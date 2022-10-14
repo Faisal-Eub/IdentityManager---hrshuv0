@@ -33,6 +33,12 @@ builder.Services.Configure<IdentityOptions>(options =>
     options.Lockout.MaxFailedAccessAttempts = 2;
 });
 
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.AccessDeniedPath = new PathString("/Home/AccessDenied");
+    
+});
+
 var facebookOptions = builder.Configuration.GetSection("Facebook").Get<FacebookOptions>();
 builder.Services.AddAuthentication()
     .AddFacebook(options =>
