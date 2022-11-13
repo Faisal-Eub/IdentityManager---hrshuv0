@@ -15,6 +15,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(connectionString);
 });
 
+// builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true)
+//     .AddEntityFrameworkStores<ApplicationDbContext>();
+
 builder.Services.AddIdentity<IdentityUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -38,7 +41,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = new PathString("/Home/AccessDenied");
     
 });
-
+/*
 var facebookOptions = builder.Configuration.GetSection("Facebook").Get<FacebookOptions>();
 builder.Services.AddAuthentication()
     .AddFacebook(options =>
@@ -46,6 +49,9 @@ builder.Services.AddAuthentication()
         options.AppId = facebookOptions.AppId;
         options.AppSecret = facebookOptions.AppSecret;
     });
+*/
+builder.Services.AddRazorPages();
+
 
 var app = builder.Build();
 
@@ -68,5 +74,9 @@ app.UseAuthorization();
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Home}/{action=Index}/{id?}");
+
+app.UseEndpoints(endpoints => 
+    endpoints.MapRazorPages()
+    );
 
 app.Run();
